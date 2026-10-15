@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">جذور القرآن</string>
+    <string name="search_hint">ابحث عن جذر (مثال: ك ت ب)…</string>
+    <string name="tab_home">الرئيسية</string>
+    <string name="tab_search">بحث</string>
+    <string name="tab_letters">الحروف</string>
+    <string name="tab_workspace">ورشتي</string>
+    <string name="root">الجذر</string>
+    <string name="occurrences">عدد المواضع</string>
+    <string name="forms_count">عدد التصريفات</string>
+    <string name="related_roots">جذور مرتبطة</string>
+    <string name="semantic_roots">متقاربة دلاليا</string>
+    <string name="morpho_roots">متقاربة صرفيا</string>
+    <string name="forms">التصريفات</string>
+    <string name="play_husary">تلاوة الحصري</string>
+    <string name="play_all">تشغيل الكل</string>
+    <string name="stop_all">إيقاف</string>
+    <string name="downloading_audio">جارٍ تحميل الصوت…</string>
+    <string name="search_meaning">بحث عن المعنى</string>
+    <string name="add_to_workspace">أضف إلى الورشة</string>
+    <string name="copy">نسخ</string>
+    <string name="hide">إخفاء</string>
+    <string name="show">عرض</string>
+    <string name="hide_ayah">إخفاء الآية</string>
+    <string name="show_ayah">إظهار الآية</string>
+    <string name="hidden_ayah_label">آية مخفية</string>
+    <string name="restore_all">إظهار الكل</string>
+    <string name="empty_workspace">الورشة فارغة. أضف نتائج من شاشة الجذر.</string>
+    <string name="loading">جارٍ التحميل…</string>
+    <string name="db_missing">قاعدة بيانات الآيات غير موجودة. راجع تعليمات الإعداد.</string>
+</resources>

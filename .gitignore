@@ -1,0 +1,20 @@
+# Android / Gradle
+build/
+app/build/
+.gradle/
+.kotlin/
+local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+.idea/
+*.iml
+.DS_Store
+
+# Session-local
+.claude/settings.local.json
+
+# Data-prep caches (rebuilt by the fetch_* scripts; ~140 MB)
+data-prep/cache/
+data-prep/__pycache__/
