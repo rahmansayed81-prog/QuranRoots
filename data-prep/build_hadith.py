@@ -11,6 +11,12 @@ Source:  Dorar/data/hadith.db  (tables hadith, hadith_words, hadith_words_final,
 the unit's representative narration, and how many narrations of the same
 unit exist outside the Sahihayn (count only; their texts are not shipped).
 
+خ-27ب — outside the Sahihayn, narrowly: for Quranic roots with fewer than
+THIN_UNITS hadith in the Sahihayn, ship the representative text of Dorar
+units that have no Sahihayn narration and whose best grading is tier A
+(صحيح / إسناده صحيح / ثابت). Only those thin roots are linked in these
+texts, so common roots keep their Sahihayn-only lists. track = 'dorar'.
+
 Quality gate (per word that the Dorar pipeline gave a root):
   1. Proper nouns (pos = noun_prop) are NOT linked to roots — «عمر/بكر/عبد
      الرحمن» are names, not the roots عمر/بكر/رحم. Exception: «الله» → اله,
@@ -36,6 +42,8 @@ HADITH_DB = Path(os.environ.get(
 _FOLD = {"ٱ": "ا", "أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي", "ة": "ه", "ؤ": "و", "ئ": "ي"}
 _VOWELS = set(chr(c) for c in range(0x064B, 0x0651))   # tanwin + short vowels
 _SHADDA = "\u0651"
+THIN_UNITS = 5          # خ-27ب: a root with fewer Sahihayn hadith than this gets outside texts
+OUTSIDE_HID_BASE = 10_000_000
 
 
 def light_key(w: str) -> str:
@@ -58,8 +66,9 @@ def light_key(w: str) -> str:
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS hadith (
-    hid INTEGER PRIMARY KEY,
-    book TEXT NOT NULL,           -- صحيح البخاري | صحيح مسلم
+    hid INTEGER PRIMARY KEY,      -- Sahihayn hid; outside texts: 10_000_000 + Dorar unit_id
+    track TEXT NOT NULL,          -- sahihayn | dorar (خ-27ب)
+    book TEXT NOT NULL,           -- صحيح البخاري | صحيح مسلم | (outside) the grading's source book
     hadith_no TEXT,
     chapter TEXT,                 -- الكتاب
     section TEXT,                 -- الباب
@@ -126,7 +135,7 @@ def build_hadith(cur, root_letters_by_id: dict[int, str]) -> None:
     for hid, book, no, ch, sec, isnad in src.execute(
             "SELECT hid, book, hadith_no, chapter_ar, section_ar, isnad FROM hadith ORDER BY hid"):
         unit_id, is_rep, n_other = unit_of.get(hid, (hid, 1, 0))
-        rows.append([hid, book, (no or "").removesuffix(".0"), ch, (sec or "").strip("‏ "), isnad, None,
+        rows.append([hid, "sahihayn", book, (no or "").removesuffix(".0"), ch, (sec or "").strip("‏ "), isnad, None,
                      unit_id, is_rep, n_other])
     by_hid = {r[0]: r for r in rows}
 
@@ -159,29 +168,110 @@ def build_hadith(cur, root_letters_by_id: dict[int, str]) -> None:
                             break
         if rid is not None and rid in root_letters_by_id:
             postings.append((rid, hid, word_no))
-    src.close()
 
     for hid, toks in tokens.items():
         if hid in by_hid:
-            by_hid[hid][6] = " ".join(toks)
-    rows = [tuple(r) for r in rows if r[6]]
+            by_hid[hid][7] = " ".join(toks)
+    rows = [tuple(r) for r in rows if r[7]]
     cur.executemany(
-        "INSERT INTO hadith (hid, book, hadith_no, chapter, section, isnad, tokens, "
-        "unit_id, is_rep, other_narrations) VALUES (?,?,?,?,?,?,?,?,?,?)", rows)
+        "INSERT INTO hadith (hid, track, book, hadith_no, chapter, section, isnad, tokens, "
+        "unit_id, is_rep, other_narrations) VALUES (?,?,?,?,?,?,?,?,?,?,?)", rows)
     # A unit whose representative narration has no words must still have one.
     # Pick the smallest hid in it (Bukhari first) as the shown narration.
     units = defaultdict(list)
     for r in rows:
-        units[r[7]].append(r)
+        units[r[8]].append(r)
     for rs in units.values():
-        if not any(r[8] for r in rs):
+        if not any(r[9] for r in rs):
             cur.execute("UPDATE hadith SET is_rep = 1 WHERE hid = ?", (rs[0][0],))  # hid-ordered → Bukhari first
+
+    # خ-27ب: outside the Sahihayn for thin roots.
+    n_outside = 0
+    if {"dorar_sahih_text", "dorar_words", "dorar_words_final"} <= have and unit_of:
+        units_by_root: defaultdict[int, set] = defaultdict(set)
+        for rid, hid, _ in postings:
+            units_by_root[rid].add(unit_of.get(hid, (hid,))[0])
+        thin = {rid for rid in root_letters_by_id if len(units_by_root.get(rid, ())) < THIN_UNITS}
+        n_outside = build_outside(cur, src, thin, root_letters_by_id, qidx, rules, stats)
+    src.close()
     cur.executemany(
         "INSERT OR IGNORE INTO hadith_root_words (root_id, hid, word_no) VALUES (?,?,?)", postings)
-    n_units = len({r[7] for r in rows})
+    n_units = len({r[8] for r in rows})
     print(f"      hadith: {len(rows):,} ahadith in {n_units:,} units "
           f"({'Dorar units' if unit_of else 'no unit table'}; "
           f"final roots {'yes' if final_root else 'no'}), {len(postings):,} root links "
           f"(confirmed by Quran {stats['quran_confirmed']:,}, corrected {stats['quran_corrected']:,}, "
           f"curated {stats['curated_override']:,}, "
           f"proper nouns unlinked {stats['proper_noun_unlinked']:,}).")
+    if n_outside:
+        print(f"      outside the Sahihayn (خ-27ب): {n_outside:,} tier-A texts for "
+              f"{stats['outside_roots']:,} thin roots, {stats['outside_links']:,} links.")
+
+
+def _gate(text, rid, is_proper, root_letters_by_id, qidx, rules, stats):
+    """The same quality gate as the Sahihayn words; returns the root id or None."""
+    from build_db import normalize_search
+    if rid is None:
+        return None
+    if is_proper and root_letters_by_id.get(rid) != "اله":
+        stats["proper_noun_unlinked"] += 1
+        return None
+    c = qidx.get(light_key(text))
+    if c and len(c) == 1:
+        (qrid, n), = c.items()
+        if qrid != rid and n >= 2:
+            rid = qrid
+            stats["quran_corrected"] += 1
+        elif qrid == rid:
+            stats["quran_confirmed"] += 1
+    norm = normalize_search(text)
+    for frm, field, pat, to in rules:
+        if rid == frm and pat.search(text if field == "raw" else norm):
+            stats["curated_override"] += 1
+            return to
+    return rid
+
+
+def build_outside(cur, src, thin, root_letters_by_id, qidx, rules, stats) -> int:
+    import json
+    cands = src.execute("""
+        SELECT u.unit_id, t.text_key, u.n_dorar_w, t.best_label, t.rulings_json, t.narrators_json
+        FROM hadith_unit u JOIN wording w ON w.wording_id = u.rep_wording_id
+        JOIN dorar_sahih_text t ON 'D:' || t.text_key = w.key
+        WHERE u.n_sahihayn_w = 0 AND t.best_tier = 'A'""").fetchall()
+    rows, postings, roots_hit = [], [], set()
+    for unit_id, tk, n_w, label, rulings, narrators in cands:
+        words = src.execute(
+            "SELECT w.word_no, w.text, f.root_id, f.is_proper FROM dorar_words w "
+            "LEFT JOIN dorar_words_final f ON f.text_key = w.text_key AND f.word_no = w.word_no "
+            "WHERE w.text_key = ? ORDER BY w.word_no", (tk,)).fetchall()
+        if not words:
+            continue
+        links = []
+        for wn, text, rid, prop in words:
+            rid = _gate(text, rid, prop or 0, root_letters_by_id, qidx, rules, stats)
+            if rid in thin:
+                links.append((rid, wn))
+        if not links:
+            continue
+        hid = OUTSIDE_HID_BASE + unit_id
+        r0 = (json.loads(rulings or "[]") or [{}])[0]
+        narr = (json.loads(narrators or "[]") or [{}])[0].get("narrator") or ""
+        section = (label or "").replace("_", " ")
+        if r0.get("scholar"):
+            section = f"{section} — {r0['scholar']}".strip(" —")
+        rows.append((hid, "dorar", r0.get("source") or "خارج الصحيحين", r0.get("number") or "",
+                     None, section or None, narr.strip("[] ") or None,
+                     " ".join(t for _, t, _, _ in words), unit_id, 1, max(n_w - 1, 0)))
+        for rid, wn in links:
+            postings.append((rid, hid, wn))
+            roots_hit.add(rid)
+    cur.executemany(
+        "INSERT INTO hadith (hid, track, book, hadith_no, chapter, section, isnad, tokens, "
+        "unit_id, is_rep, other_narrations) VALUES (?,?,?,?,?,?,?,?,?,?,?)", rows)
+    cur.executemany(
+        "INSERT OR IGNORE INTO hadith_root_words (root_id, hid, word_no) VALUES (?,?,?)", postings)
+    stats["outside_roots"] = len(roots_hit)
+    stats["outside_links"] = len(postings)
+    return len(rows)
+

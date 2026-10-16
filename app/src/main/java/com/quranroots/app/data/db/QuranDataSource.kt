@@ -170,20 +170,22 @@ class QuranDataSource(context: Context) {
     fun hadithHitsForRoot(rootId: Long): HadithHits = safeQuery(HadithHits.EMPTY) { d ->
         runCatching {
             d.rawQuery(
-                "SELECT w.hid, w.word_no, h.unit_id, h.is_rep FROM hadith_root_words w " +
+                "SELECT w.hid, w.word_no, h.unit_id, h.is_rep, h.track FROM hadith_root_words w " +
                     "JOIN hadith h ON h.hid = w.hid WHERE w.root_id = ?",
                 arrayOf(rootId.toString())
             ).use { c ->
                 val words = HashMap<Long, MutableSet<Int>>()
                 val units = HashMap<Long, Long>()
                 val reps = HashSet<Long>()
+                val outside = HashSet<Long>()
                 while (c.moveToNext()) {
                     val hid = c.getLong(0)
                     words.getOrPut(hid) { HashSet() } += c.getInt(1)
                     units[hid] = c.getLong(2)
                     if (c.getInt(3) == 1) reps += hid
+                    if (c.getString(4) != "sahihayn") outside += hid
                 }
-                HadithHits(words, units, reps)
+                HadithHits(words, units, reps, outside)
             }
         }.getOrDefault(HadithHits.EMPTY)
     }
@@ -193,7 +195,7 @@ class QuranDataSource(context: Context) {
         return safeQuery(emptyList()) { d ->
             val ph = hids.joinToString(",") { "?" }
             d.rawQuery(
-                "SELECT hid, book, hadith_no, chapter, section, isnad, tokens, unit_id, is_rep, other_narrations " +
+                "SELECT hid, book, hadith_no, chapter, section, isnad, tokens, unit_id, is_rep, other_narrations, track " +
                     "FROM hadith WHERE hid IN ($ph)",
                 hids.map { it.toString() }.toTypedArray()
             ).use { c ->
@@ -208,7 +210,8 @@ class QuranDataSource(context: Context) {
                         words = c.getString(6).split(' '),
                         unitId = c.getLong(7),
                         isRep = c.getInt(8) == 1,
-                        otherNarrations = c.getInt(9)
+                        otherNarrations = c.getInt(9),
+                        track = c.getString(10)
                     )
                     byId[h.hid] = h
                 }

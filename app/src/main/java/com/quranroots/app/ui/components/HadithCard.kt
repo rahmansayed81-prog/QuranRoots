@@ -1,6 +1,8 @@
 package com.quranroots.app.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -41,19 +43,32 @@ fun HadithCard(
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
             Column(Modifier.weight(1f)) {
-                Text(
-                    "${h.book} · ${h.hadithNo}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (h.isOutside) {
+                        Text(
+                            "خارج الصحيحين",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier
+                                .padding(end = 6.dp)
+                                .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 1.dp)
+                        )
+                    }
+                    Text(
+                        "${h.book} · ${h.hadithNo}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 h.section?.takeIf { it.isNotBlank() }?.let {
-                    Text("باب: $it", style = MaterialTheme.typography.labelSmall,
+                    Text(if (h.isOutside) "الحكم: $it" else "باب: $it", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }
             }
             if (!h.isnad.isNullOrBlank()) {
                 TextButton(onClick = { showIsnad = !showIsnad }) {
-                    Text(if (showIsnad) "إخفاء الإسناد" else "الإسناد")
+                    Text(if (h.isOutside) "الراوي" else if (showIsnad) "إخفاء الإسناد" else "الإسناد")
                 }
             }
         }
@@ -111,7 +126,8 @@ fun HadithUnitCard(
                 }
                 if (primary.otherNarrations > 0) {
                     Text(
-                        "وفي كتب أخرى: ${primary.otherNarrations}",
+                        (if (primary.isOutside) "روايات أخرى خارج الصحيحين: " else "وفي كتب أخرى: ") +
+                            primary.otherNarrations,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 8.dp)

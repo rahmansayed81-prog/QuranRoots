@@ -174,7 +174,9 @@ class StudyExporter(private val quran: QuranDataSource) {
                 val texts = quran.hadiths(shown.flatMap { it.first.hids }).associateBy { it.hid }
                 for ((g, idx) in shown) {
                     val h = texts[g.primary] ?: continue
-                    sb.append("- **${h.book} ${h.hadithNo}** — [${idx.joinToString("، ") { roots[it].lettersSpaced }}]")
+                    sb.append("- **${h.book} ${h.hadithNo}**")
+                    if (h.isOutside) sb.append(" (خارج الصحيحين؛ ${h.section ?: "صحيح"})")
+                    sb.append(" — [${idx.joinToString("، ") { roots[it].lettersSpaced }}]")
                     val others = g.others.mapNotNull { texts[it] }
                     if (others.isNotEmpty()) {
                         sb.append(" — روايات أخرى: ").append(others.joinToString("، ") { "${it.book} ${it.hadithNo}" })

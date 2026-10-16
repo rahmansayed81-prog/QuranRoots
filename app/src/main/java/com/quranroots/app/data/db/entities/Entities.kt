@@ -75,6 +75,8 @@ data class OppositeLink(
 /** A Sahihayn hadith (matn split into words; word_no = index + 1). */
 data class Hadith(
     val hid: Long,
+    /** خ-27ب: "sahihayn", or "dorar" for a tier-A text outside the Sahihayn. */
+    val track: String,
     val book: String,
     val hadithNo: String,
     val chapter: String?,
@@ -86,7 +88,9 @@ data class Hadith(
     val isRep: Boolean,
     /** Narrations of the same unit outside the Sahihayn (count only). */
     val otherNarrations: Int
-)
+) {
+    val isOutside: Boolean get() = track != "sahihayn"
+}
 
 /** A hadith shown under a root, with that root's word positions. */
 data class HadithOccurrence(val hadith: Hadith, val highlighted: Set<Int>)
@@ -95,7 +99,9 @@ data class HadithOccurrence(val hadith: Hadith, val highlighted: Set<Int>)
 data class HadithHits(
     val words: Map<Long, Set<Int>>,
     val unitByHid: Map<Long, Long>,
-    val repHids: Set<Long>
+    val repHids: Set<Long>,
+    /** hids of texts outside the Sahihayn (خ-27ب). */
+    val outsideHids: Set<Long> = emptySet()
 ) {
     companion object { val EMPTY = HadithHits(emptyMap(), emptyMap(), emptySet()) }
 }
