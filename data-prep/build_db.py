@@ -804,19 +804,23 @@ def main() -> int:
     # matches Uthmani rasm (dagger alif, waw/ya-written long-a). (form, root) ->
     # {surface: count}
     form_map: defaultdict[tuple[str, int], Counter] = defaultdict(Counter)
+    # count = distinct word positions. A word whose surface and lemma
+    # normalize to the same form must count once, not twice.
+    form_pos: defaultdict[tuple[str, int], set] = defaultdict(set)
     for (s, a, wno, text, lemma, rid) in word_rows:
         if rid is None:
             continue
         for variant in search_variants(text):
             form_map[(variant, rid)][text] += 1
+            form_pos[(variant, rid)].add((s, a, wno))
         if lemma:
             for variant in search_variants(lemma):
                 form_map[(variant, rid)][lemma] += 1
+                form_pos[(variant, rid)].add((s, a, wno))
     wf_rows = []
     for (form_plain, rid), surfaces in form_map.items():
         sample, _ = surfaces.most_common(1)[0]
-        total = sum(surfaces.values())
-        wf_rows.append((form_plain, rid, sample, total))
+        wf_rows.append((form_plain, rid, sample, len(form_pos[(form_plain, rid)])))
     cur.executemany(
         "INSERT INTO word_forms (form_plain, root_id, sample, count) VALUES (?,?,?,?)",
         wf_rows,
