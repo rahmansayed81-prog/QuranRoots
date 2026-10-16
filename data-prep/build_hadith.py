@@ -37,7 +37,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 HADITH_DB = Path(os.environ.get(
-    "QR_HADITH_DB", r"C:\Users\rahma\Documents\Claude\Dorar\data\hadith.db"))
+    "QR_HADITH_DB", Path.home() / "Documents" / "Claude" / "Dorar" / "data" / "hadith.db"))
 
 _FOLD = {"ٱ": "ا", "أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي", "ة": "ه", "ؤ": "و", "ئ": "ي"}
 _VOWELS = set(chr(c) for c in range(0x064B, 0x0651))   # tanwin + short vowels
