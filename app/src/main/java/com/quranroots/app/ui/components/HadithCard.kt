@@ -80,6 +80,13 @@ fun HadithCard(
                 modifier = Modifier.padding(bottom = 4.dp)
             )
         }
+        h.url?.let { url ->
+            val uri = androidx.compose.ui.platform.LocalUriHandler.current
+            TextButton(
+                onClick = { uri.openUri(url) },
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+            ) { Text("المصدر: الدرر السنية", style = MaterialTheme.typography.labelMedium) }
+        }
         AyahView(
             words = words,
             highlightedWordNos = highlighted,

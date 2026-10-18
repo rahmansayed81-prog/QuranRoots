@@ -87,7 +87,9 @@ data class Hadith(
     val unitId: Long,
     val isRep: Boolean,
     /** Narrations of the same unit outside the Sahihayn (count only). */
-    val otherNarrations: Int
+    val otherNarrations: Int,
+    /** خ-27ب: the text's page on dorar.net (outside texts). */
+    val url: String? = null
 ) {
     val isOutside: Boolean get() = track != "sahihayn"
 }

@@ -80,6 +80,7 @@ private object Routes {
     fun letterDetail(letter: String) = "letter/$letter"
     const val Muqattaat = "muqattaat"
     const val Sync = "sync"
+    const val Sources = "sources"
     const val Study = "study/{studyId}"
     fun study(id: Long) = "study/$id"
 }
@@ -140,7 +141,13 @@ fun AppRoot() {
             modifier = Modifier.padding(padding)
         ) {
             composable(Routes.Home) {
-                HomeScreen(onRootClick = { id -> nav.navigate(Routes.rootDetail(id)) })
+                HomeScreen(
+                    onRootClick = { id -> nav.navigate(Routes.rootDetail(id)) },
+                    onSourcesClick = { nav.navigate(Routes.Sources) }
+                )
+            }
+            composable(Routes.Sources) {
+                com.quranroots.app.ui.screens.about.SourcesScreen(onBack = { nav.popBackStack() })
             }
             composable(Routes.Search) {
                 SearchScreen(onRootClick = { id -> nav.navigate(Routes.rootDetail(id)) })

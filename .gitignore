@@ -18,3 +18,9 @@ local.properties
 # Data-prep caches (rebuilt by the fetch_* scripts; ~140 MB)
 data-prep/cache/
 data-prep/__pycache__/
+
+# Play upload key config (secrets)
+keystore.properties
+
+# Draft letter (not for the public repo)
+store/dorar-permission-email.md

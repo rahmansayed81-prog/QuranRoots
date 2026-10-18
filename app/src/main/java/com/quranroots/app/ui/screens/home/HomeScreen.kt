@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -37,7 +38,7 @@ import com.quranroots.app.viewmodel.HomeViewModel
 import com.quranroots.app.viewmodel.RootSort
 
 @Composable
-fun HomeScreen(onRootClick: (Long) -> Unit) {
+fun HomeScreen(onRootClick: (Long) -> Unit, onSourcesClick: () -> Unit = {}) {
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as App
     val vm: HomeViewModel = viewModel(factory = HomeViewModel.Factory(app))
 
@@ -52,11 +53,18 @@ fun HomeScreen(onRootClick: (Long) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text(
-                stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                // خ-45: sources and licenses
+                androidx.compose.material3.IconButton(onClick = onSourcesClick) {
+                    Icon(androidx.compose.material.icons.Icons.Outlined.Info, contentDescription = "المصادر والتراخيص")
+                }
+            }
         }
 
         item {

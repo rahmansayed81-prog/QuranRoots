@@ -195,7 +195,7 @@ class QuranDataSource(context: Context) {
         return safeQuery(emptyList()) { d ->
             val ph = hids.joinToString(",") { "?" }
             d.rawQuery(
-                "SELECT hid, book, hadith_no, chapter, section, isnad, tokens, unit_id, is_rep, other_narrations, track " +
+                "SELECT hid, book, hadith_no, chapter, section, isnad, tokens, unit_id, is_rep, other_narrations, track, url " +
                     "FROM hadith WHERE hid IN ($ph)",
                 hids.map { it.toString() }.toTypedArray()
             ).use { c ->
@@ -211,7 +211,8 @@ class QuranDataSource(context: Context) {
                         unitId = c.getLong(7),
                         isRep = c.getInt(8) == 1,
                         otherNarrations = c.getInt(9),
-                        track = c.getString(10)
+                        track = c.getString(10),
+                        url = if (c.isNull(11)) null else c.getString(11)
                     )
                     byId[h.hid] = h
                 }
@@ -502,6 +503,6 @@ class QuranDataSource(context: Context) {
     companion object {
         private const val DB_NAME = "quran-roots.db"
         /** Bump when the asset DB schema changes so clients re-copy from assets. */
-        private const val DB_VERSION = 12
+        private const val DB_VERSION = 13
     }
 }

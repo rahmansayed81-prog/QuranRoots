@@ -219,10 +219,15 @@ fun RootDetailScreen(
                 val outside = groups.count { it.primary in state.hadithHits.outsideHids }
                 item {
                     Text(
-                        "صحيحا البخاري ومسلم · ${groups.size} حديثًا" +
+                        (if (outside < groups.size) "صحيحا البخاري ومسلم · " else "") +
+                            "${groups.size} حديثًا" +
                             (if (state.relatedFilterRootId != null) " مشتركًا" else "") +
                             (if (narrations > groups.size) " في $narrations رواية" else "") +
-                            (if (outside > 0) " · منها $outside خارج الصحيحين (صحيح)" else "") +
+                            when {
+                                outside == 0 -> ""
+                                outside == groups.size -> " · كلها صحيحة من خارج الصحيحين"
+                                else -> " · منها $outside صحيحة من خارج الصحيحين"
+                            } +
                             " · تحليل آلي للجذور",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

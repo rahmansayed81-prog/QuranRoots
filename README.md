@@ -41,7 +41,8 @@ python build_db.py
 
 | المصدر | الاستخدام |
 |--------|-----------|
-| متون الصحيحين، وأحاديث صحيحة خارج الصحيحين بأحكامها، من [الدرر السنية](https://dorar.net/) | قسم «في الحديث» (مع ذكر المصدر والحكم والمحدّث في كل حديث) |
+| متون صحيحي البخاري ومسلم من [LK Hadith Corpus](https://github.com/ShathaTm/LK-Hadith-Corpus) (Altammami, Atwell & Alsalka, 2019) | قسم «في الحديث» |
+| أحاديث صحيحة خارج الصحيحين بأحكامها، وعدد روايات الحديث في الكتب الأخرى، من [الدرر السنية](https://dorar.net/) | قسم «في الحديث» (مع ذكر المصدر والحكم والمحدّث في كل حديث) |
 | خط [Amiri Quran](https://github.com/aliftype/amiri) | SIL Open Font License (`assets/amiri_quran_OFL.txt`) |
 | تلاوة الحصري من [everyayah.com](https://everyayah.com/) | تُنزَّل عند الطلب، لا تُضمَّن |
 

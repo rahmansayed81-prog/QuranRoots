@@ -76,7 +76,8 @@ CREATE TABLE IF NOT EXISTS hadith (
     tokens TEXT NOT NULL,         -- matn words joined by single spaces (word_no = index+1)
     unit_id INTEGER NOT NULL,     -- خ-26: narrations of one hadith share a unit (= hid when unknown)
     is_rep INTEGER NOT NULL,      -- 1 for the unit's representative narration
-    other_narrations INTEGER NOT NULL  -- narrations of this unit outside the Sahihayn (Dorar)
+    other_narrations INTEGER NOT NULL, -- narrations of this unit outside the Sahihayn (Dorar)
+    url TEXT                      -- خ-27ب: the text's page on dorar.net (outside texts only)
 );
 CREATE INDEX IF NOT EXISTS hadith_unit_idx ON hadith (unit_id);
 -- Root → word positions in hadith (after the quality gate). Quranic roots only.
@@ -131,11 +132,16 @@ def build_hadith(cur, root_letters_by_id: dict[int, str]) -> None:
                 "SELECT hid, word_no, root_id, is_proper FROM hadith_words_final"):
             final_root[(hid, wn)] = (rid, prop or 0)
 
+    def _clean(v):
+        """Empty CSV cells reach the source DB as the text 'nan'."""
+        v = (v or "").strip("‏ ")
+        return None if not v or v.lower() == "nan" else v
+
     rows = []
     for hid, book, no, ch, sec, isnad in src.execute(
             "SELECT hid, book, hadith_no, chapter_ar, section_ar, isnad FROM hadith ORDER BY hid"):
         unit_id, is_rep, n_other = unit_of.get(hid, (hid, 1, 0))
-        rows.append([hid, "sahihayn", book, (no or "").removesuffix(".0"), ch, (sec or "").strip("‏ "), isnad, None,
+        rows.append([hid, "sahihayn", book, (no or "").removesuffix(".0"), _clean(ch), _clean(sec), _clean(isnad), None,
                      unit_id, is_rep, n_other])
     by_hid = {r[0]: r for r in rows}
 
@@ -256,19 +262,25 @@ def build_outside(cur, src, thin, root_letters_by_id, qidx, rules, stats) -> int
             continue
         hid = OUTSIDE_HID_BASE + unit_id
         r0 = (json.loads(rulings or "[]") or [{}])[0]
+        # Dorar's terms ask that every text link back to its page; skip texts without one.
+        url = (src.execute("SELECT url FROM dorar_tag WHERE hit_key = ?", (r0.get("hit_key"),)).fetchone()
+               if r0.get("hit_key") else None)
+        if not url:
+            stats["outside_no_url"] += 1
+            continue
         narr = (json.loads(narrators or "[]") or [{}])[0].get("narrator") or ""
         section = (label or "").replace("_", " ")
         if r0.get("scholar"):
             section = f"{section} — {r0['scholar']}".strip(" —")
         rows.append((hid, "dorar", r0.get("source") or "خارج الصحيحين", r0.get("number") or "",
                      None, section or None, narr.strip("[] ") or None,
-                     " ".join(t for _, t, _, _ in words), unit_id, 1, max(n_w - 1, 0)))
+                     " ".join(t for _, t, _, _ in words), unit_id, 1, max(n_w - 1, 0), url[0]))
         for rid, wn in links:
             postings.append((rid, hid, wn))
             roots_hit.add(rid)
     cur.executemany(
         "INSERT INTO hadith (hid, track, book, hadith_no, chapter, section, isnad, tokens, "
-        "unit_id, is_rep, other_narrations) VALUES (?,?,?,?,?,?,?,?,?,?,?)", rows)
+        "unit_id, is_rep, other_narrations, url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", rows)
     cur.executemany(
         "INSERT OR IGNORE INTO hadith_root_words (root_id, hid, word_no) VALUES (?,?,?)", postings)
     stats["outside_roots"] = len(roots_hit)
