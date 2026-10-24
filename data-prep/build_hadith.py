@@ -18,9 +18,11 @@ units that have no Sahihayn narration and whose best grading is tier A
 texts, so common roots keep their Sahihayn-only lists. track = 'dorar'.
 
 Quality gate (per word that the Dorar pipeline gave a root):
-  1. Proper nouns (pos = noun_prop) are NOT linked to roots — «عمر/بكر/عبد
-     الرحمن» are names, not the roots عمر/بكر/رحم. Exception: «الله» → اله,
-     which the Quranic Arabic Corpus itself links.
+  1. Proper nouns (pos = noun_prop, or is_proper from the Dorar final tables)
+     are NOT linked to roots — «عمر/بكر/عبد الرحمن» are names, not the roots
+     عمر/بكر/رحم. The analyzer's noun_prop tag on «الله» is ignored (QAC itself
+     links it to اله), but an explicit is_proper on «الله» is honoured: Dorar's
+     fix49 marks «عبد الله» when it is a person's name (عبد الله بن عمر).
   2. Quran-verified correction: if the word's diacritized form (case ending
      ignored, shadda kept) occurs in the Quran with exactly one analysis backed
      by ≥2 occurrences, the Quranic (QAC) analysis wins — e.g. بعض: عضض→بعض,
@@ -153,7 +155,9 @@ def build_hadith(cur, root_letters_by_id: dict[int, str]) -> None:
         tokens[hid].append(text)
         rid, is_proper = final_root.get((hid, word_no), (root_id, 0))
         if rid is not None:
-            if (pos == "noun_prop" or is_proper) and root_letters_by_id.get(rid) != "اله":
+            # «الله» is tagged noun_prop by the analyzer, so the pos test exempts it; an explicit
+            # is_proper flag is honoured even for اله («عبد الله بن عمر», Dorar fix49 rule R3).
+            if is_proper or (pos == "noun_prop" and root_letters_by_id.get(rid) != "اله"):
                 rid = None
                 stats["proper_noun_unlinked"] += 1
             else:
@@ -219,7 +223,7 @@ def _gate(text, rid, is_proper, root_letters_by_id, qidx, rules, stats):
     from build_db import normalize_search
     if rid is None:
         return None
-    if is_proper and root_letters_by_id.get(rid) != "اله":
+    if is_proper:                      # explicit flag wins, even for اله (عبد الله as a name)
         stats["proper_noun_unlinked"] += 1
         return None
     c = qidx.get(light_key(text))

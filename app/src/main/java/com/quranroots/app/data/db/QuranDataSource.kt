@@ -503,6 +503,6 @@ class QuranDataSource(context: Context) {
     companion object {
         private const val DB_NAME = "quran-roots.db"
         /** Bump when the asset DB schema changes so clients re-copy from assets. */
-        private const val DB_VERSION = 14
+        private const val DB_VERSION = 15
     }
 }
