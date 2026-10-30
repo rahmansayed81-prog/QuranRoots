@@ -222,6 +222,10 @@ def weigh(bw: str, root: str, *, vf: int = 1, pos_tag: str = "N", aspect: str | 
             t[0] = "y"
     # form VIII with assimilated or emphatic infix: the letter after ف that
     # stands for the ت of افتعل (اصطبر، ازدجر، ادّكر) is weighed as ت.
+    # CAMeL-style spelling leaves the fatha before ā unwritten (شَراب): restore it
+    for j in range(len(toks) - 1):
+        if toks[j + 1] == ["A"] and not any(d in "aiuoFNK" for d in toks[j][1:]) and toks[j][0] not in "A{":
+            toks[j].append("a")
     global root_hint
     root_hint = root
     limit = len(toks) - n_suffix
@@ -253,6 +257,23 @@ def weigh(bw: str, root: str, *, vf: int = 1, pos_tag: str = "N", aspect: str | 
         sym = syms[i]
         letter = t[0]
         strength = can_realize(letter, root[i], vf, i == 0, "~" in t)
+        pv = vowel_of(out[j - 1]) if j > 0 else None
+        nv = [d for d in t[1:] if d in "aiuFNK"]
+        if letter == "|" and root[i] == "A":
+            # آ = hamza + ā (آذِن → فَاعِل)
+            out[j] = [sym, "a", "A"]
+            continue
+        if letter in "wy" and root[i] == letter and "~" in t and i == len(root) - 1 and pv in ("u", "i"):
+            # عَدُوّ / غَنِيّ: a long vowel merged with the weak ل → فَعُول / فَعِيل
+            out[j] = [BW2AR[letter] + sym] + nv
+            status = "weak"
+            continue
+        if letter in "wy" and root[i] in "wy" and "~" in t and i == 1 and pv == "a" and pos_tag != "V" \
+                and nv[:1] in (["i"], ["u"]):
+            # سَيِّد / طَيِّب / قَيُّوم: ي زائدة merged with the weak ع → فَيْعِل / فَيْعُول
+            out[j] = ["يْ" + sym] + nv
+            status = "weak"
+            continue
         if strength == 3:
             out[j] = [sym] + t[1:]
         elif strength == 2:

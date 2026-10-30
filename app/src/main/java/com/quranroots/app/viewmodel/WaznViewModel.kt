@@ -31,6 +31,9 @@ data class WaznState(
     val labels: List<Pair<String, Int>> = emptyList(),
     val selectedLabel: String? = null,
     val groups: List<WaznRootGroup> = emptyList(),
+    /** خ-40 م2: the same ميزان in the hadith. */
+    val showHadith: Boolean = false,
+    val hadithGroups: List<com.quranroots.app.data.db.entities.HadithWaznRoot> = emptyList(),
     val loading: Boolean = true
 )
 
@@ -51,14 +54,20 @@ class WaznViewModel(private val repo: QuranRepository) : ViewModel() {
                 val w = repo.waznById(id)
                 Triple(w, repo.waznSiblings(id), if (w != null) repo.waznWords(w) else emptyList())
             }
+            val hadith = withContext(Dispatchers.IO) { repo.hadithWaznRoots(id) }
             words = ws
             val labels = ws.groupingBy { it.label ?: "—" }.eachCount()
                 .entries.sortedByDescending { it.value }.map { it.key to it.value }
             _state.value = WaznState(
                 wazn = wazn, siblings = siblings, labels = labels,
-                groups = group(ws), loading = false
+                groups = group(ws), hadithGroups = hadith,
+                showHadith = ws.isEmpty() && hadith.isNotEmpty(), loading = false
             )
         }
+    }
+
+    fun setShowHadith(show: Boolean) {
+        _state.value = _state.value.copy(showHadith = show)
     }
 
     /** Narrow the list to one التصريف (tap again to clear). */

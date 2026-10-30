@@ -101,8 +101,13 @@ data class WaznEntry(
     /** true = the lemma's ميزان (فَاعِل), false = the word's (فَاعِلُونَ). */
     val isLemma: Boolean,
     val words: Int = 0,
-    val roots: Int = 0
+    val roots: Int = 0,
+    /** Hadith words on this ميزان (only words linked to a Quranic root). */
+    val hadith: Int = 0
 )
+
+/** One root's hadith words on a ميزان, with its most frequent forms. */
+data class HadithWaznRoot(val root: RootEntity, val count: Int, val forms: List<Pair<String, Int>>)
 
 /** A lemma of a root with its ميزان and التصريف (most frequent among its words). */
 data class LemmaMorph(val lemma: String, val wazn: WaznEntry?, val label: String?)

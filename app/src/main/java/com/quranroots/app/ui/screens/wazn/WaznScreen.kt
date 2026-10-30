@@ -83,6 +83,52 @@ fun WaznScreen(
         val w = state.wazn ?: return@Column
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // خ-40 م2: one ميزان, two sources — the Quran or the hadith.
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = !state.showHadith,
+                        onClick = { vm.setShowHadith(false) },
+                        enabled = w.words > 0,
+                        label = { Text("القرآن (${w.words})") }
+                    )
+                    FilterChip(
+                        selected = state.showHadith,
+                        onClick = { vm.setShowHadith(true) },
+                        enabled = state.hadithGroups.isNotEmpty(),
+                        label = { Text("الأحاديث (${w.hadith})") }
+                    )
+                }
+            }
+            if (state.showHadith) {
+                item {
+                    Text(
+                        "${state.hadithGroups.size} جذرًا · الميزان آلي: من نفس الكلمة في القرآن، وإلا بتحليل CAMeL",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                items(state.hadithGroups, key = { "h${it.root.rootId}" }) { g ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RootChip(root = g.root, label = g.root.lettersSpaced, onClick = { onRootClick(g.root.rootId) })
+                                Text(
+                                    "  ${g.count} موضعًا",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                g.forms.joinToString("  ·  ") { (t, n) -> if (n > 1) "$t ($n)" else t },
+                                fontSize = 18.sp,
+                                lineHeight = 32.sp
+                            )
+                        }
+                    }
+                }
+                return@LazyColumn
+            }
             item {
                 Text(
                     "${w.words} موضعًا · ${w.roots} جذرًا · الميزان مستخرج آليًا من تحليل QAC",

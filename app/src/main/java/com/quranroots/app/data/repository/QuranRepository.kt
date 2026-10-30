@@ -87,6 +87,7 @@ class QuranRepository(private val source: QuranDataSource) {
     suspend fun waznById(id: Long) = source.waznById(id)
     suspend fun waznSiblings(id: Long) = source.waznSiblings(id)
     suspend fun waznWords(w: com.quranroots.app.data.db.entities.WaznEntry) = source.waznWords(w)
+    suspend fun hadithWaznRoots(id: Long) = source.hadithWaznRoots(id)
 
     /**
      * التقاليب (الاشتقاق الأكبر): every distinct ordering of the root's letters.

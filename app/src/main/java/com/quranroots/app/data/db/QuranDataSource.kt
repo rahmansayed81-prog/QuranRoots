@@ -8,6 +8,7 @@ import com.quranroots.app.data.db.entities.AyahEntity
 import com.quranroots.app.data.db.entities.ExternalRootInfo
 import com.quranroots.app.data.db.entities.Hadith
 import com.quranroots.app.data.db.entities.HadithHits
+import com.quranroots.app.data.db.entities.HadithWaznRoot
 import com.quranroots.app.data.db.entities.LemmaMorph
 import com.quranroots.app.data.db.entities.WaznEntry
 import com.quranroots.app.data.db.entities.WaznWord
@@ -258,12 +259,13 @@ class QuranDataSource(context: Context) {
     }
 
     private val waznCounts =
-        "SELECT z.id, z.text, z.is_lemma, z.n_words, z.n_roots FROM wazn z WHERE %s ORDER BY z.n_words DESC"
+        "SELECT z.id, z.text, z.is_lemma, z.n_words, z.n_roots, z.n_hadith FROM wazn z " +
+            "WHERE (z.n_words > 0 OR z.n_hadith > 0) AND %s ORDER BY z.n_words DESC, z.n_hadith DESC"
 
     private fun collectWazn(c: Cursor): List<WaznEntry> {
         val out = mutableListOf<WaznEntry>()
         while (c.moveToNext()) {
-            out += WaznEntry(c.getLong(0), c.getString(1), c.getInt(2) == 1, c.getInt(3), c.getInt(4))
+            out += WaznEntry(c.getLong(0), c.getString(1), c.getInt(2) == 1, c.getInt(3), c.getInt(4), c.getInt(5))
         }
         return out
     }
@@ -294,6 +296,32 @@ class QuranDataSource(context: Context) {
         runCatching {
             val where = "z.plain = (SELECT plain FROM wazn WHERE id = ?) AND z.id != ?"
             d.rawQuery(waznCounts.format(where), arrayOf(id.toString(), id.toString())).use(::collectWazn)
+        }.getOrDefault(emptyList())
+    }
+
+    /** Hadith words on a ميزان, by root, most frequent root first. */
+    fun hadithWaznRoots(waznId: Long): List<HadithWaznRoot> = safeQuery(emptyList()) { d ->
+        runCatching {
+            d.rawQuery(
+                "SELECT h.n, h.forms, r.root_id, r.letters, r.letters_spaced, r.occurrences, " +
+                    "r.forms_count, r.meaning_ar FROM hadith_wazn_forms h " +
+                    "JOIN roots r ON r.root_id = h.root_id WHERE h.wazn_id = ? ORDER BY h.n DESC",
+                arrayOf(waznId.toString())
+            ).use { c ->
+                val out = mutableListOf<HadithWaznRoot>()
+                while (c.moveToNext()) {
+                    val forms = c.getString(1).split('|').mapNotNull { f ->
+                        val i = f.lastIndexOf(':')
+                        if (i > 0) f.substring(0, i) to (f.substring(i + 1).toIntOrNull() ?: 1) else null
+                    }
+                    out += HadithWaznRoot(
+                        RootEntity(c.getLong(2), c.getString(3), c.getString(4), c.getInt(5), c.getInt(6),
+                            if (c.isNull(7)) null else c.getString(7)),
+                        c.getInt(0), forms
+                    )
+                }
+                out
+            }
         }.getOrDefault(emptyList())
     }
 
@@ -607,6 +635,6 @@ class QuranDataSource(context: Context) {
     companion object {
         private const val DB_NAME = "quran-roots.db"
         /** Bump when the asset DB schema changes so clients re-copy from assets. */
-        private const val DB_VERSION = 16
+        private const val DB_VERSION = 17
     }
 }

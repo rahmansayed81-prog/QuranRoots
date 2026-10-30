@@ -1073,6 +1073,8 @@ def main() -> int:
     morph_stats = build_word_morph(cur, word_segments)
     print(f"      word morphology: {dict(morph_stats)}")
     export_review(cur, ROOT / "review" / "wazn_review_v1.tsv")
+    from build_hadith_morph import build_hadith_morph
+    print(f"      hadith morphology: {dict(build_hadith_morph(cur))}")
 
     conn.commit()
     print(f"[5/5] Wrote {DB_PATH} ({DB_PATH.stat().st_size/1024/1024:.1f} MB)")

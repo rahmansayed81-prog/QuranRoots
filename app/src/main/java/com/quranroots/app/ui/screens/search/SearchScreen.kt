@@ -254,7 +254,7 @@ private fun WaznRow(w: com.quranroots.app.data.db.entities.WaznEntry, onClick: (
                 )
             }
             Text(
-                "${w.words} موضعًا · ${w.roots} جذرًا",
+                "${w.words} موضعًا · ${w.roots} جذرًا" + if (w.hadith > 0) "\n${w.hadith} في الحديث" else "",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
