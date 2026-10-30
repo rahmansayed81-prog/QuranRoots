@@ -52,3 +52,15 @@ fun normalizeSearch(input: String): String {
     }
     return sb.toString().trim()
 }
+
+/** خ-40: the search key of a ميزان — same folding as data-prep's build_wazn.plain():
+ *  diacritics and tatweel dropped, alif forms → ا. ة and ى are kept (فَعْلَة ≠ فَعْلَه). */
+fun normalizeWazn(q: String): String = buildString {
+    for (ch in q.trim()) {
+        when {
+            ch in '\u064B'..'\u0652' || ch == '\u0670' || ch == '\u0640' || ch.isWhitespace() -> {}
+            ch == 'ٱ' || ch == 'أ' || ch == 'إ' || ch == 'آ' -> append('ا')
+            else -> append(ch)
+        }
+    }
+}

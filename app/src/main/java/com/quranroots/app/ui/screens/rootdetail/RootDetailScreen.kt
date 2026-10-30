@@ -85,7 +85,8 @@ import kotlinx.coroutines.launch
 fun RootDetailScreen(
     rootId: Long,
     onBack: () -> Unit,
-    onRelatedRoot: (Long) -> Unit
+    onRelatedRoot: (Long) -> Unit,
+    onWaznClick: (Long) -> Unit = {}
 ) {
     val app = LocalContext.current.applicationContext as App
     val vm: RootDetailViewModel = viewModel(factory = RootDetailViewModel.Factory(app))
@@ -176,7 +177,7 @@ fun RootDetailScreen(
             // Tapping a chip toggles hide-all-ayahs for that lemma.
             if (state.forms.isNotEmpty()) {
                 item { Text(stringResource(R.string.forms), style = MaterialTheme.typography.titleMedium) }
-                item { FormsRow(state, vm, ctx, canEdit) }
+                item { FormsRow(state, vm, ctx, canEdit, onWaznClick) }
             }
 
             relatedSection(relTitle, state.related, state.relatedFilterRootId,
@@ -550,7 +551,8 @@ private fun FormsRow(
     state: RootDetailState,
     vm: RootDetailViewModel,
     ctx: Context,
-    canEdit: Boolean
+    canEdit: Boolean,
+    onWaznClick: (Long) -> Unit
 ) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(state.forms) { form ->
@@ -563,13 +565,32 @@ private fun FormsRow(
                     else WebSearch.openLisanArab(ctx, form.lemma)
                 },
                 label = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(form.lemma, fontFamily = com.quranroots.app.ui.theme.QuranFont)
-                        Text(
-                            "  ${form.occurrences}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Column(Modifier.padding(vertical = 2.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(form.lemma, fontFamily = com.quranroots.app.ui.theme.QuranFont)
+                            Text(
+                                "  ${form.occurrences}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        // خ-40: الميزان (tap → every Quran word on it) and التصريف
+                        form.morph?.let { m ->
+                            m.wazn?.let { w ->
+                                Text(
+                                    w.text,
+                                    fontFamily = com.quranroots.app.ui.theme.QuranFont,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.clip(RoundedCornerShape(4.dp))
+                                        .clickable { onWaznClick(w.id) }
+                                )
+                            }
+                            m.label?.let {
+                                Text(it, style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                     }
                 },
                 trailingIcon = {

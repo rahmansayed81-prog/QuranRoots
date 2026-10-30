@@ -94,6 +94,30 @@ data class Hadith(
     val isOutside: Boolean get() = track != "sahihayn"
 }
 
+/** خ-40: الميزان الصرفي. One ميزان (of words as they stand, or of lemmas). */
+data class WaznEntry(
+    val id: Long,
+    val text: String,
+    /** true = the lemma's ميزان (فَاعِل), false = the word's (فَاعِلُونَ). */
+    val isLemma: Boolean,
+    val words: Int = 0,
+    val roots: Int = 0
+)
+
+/** A lemma of a root with its ميزان and التصريف (most frequent among its words). */
+data class LemmaMorph(val lemma: String, val wazn: WaznEntry?, val label: String?)
+
+/** A Quran word on a given ميزان. */
+data class WaznWord(
+    val surahNo: Int,
+    val ayahNo: Int,
+    val wordNo: Int,
+    val text: String,
+    val lemma: String?,
+    val root: RootEntity,
+    val label: String?
+)
+
 /** A hadith shown under a root, with that root's word positions. */
 data class HadithOccurrence(val hadith: Hadith, val highlighted: Set<Int>)
 

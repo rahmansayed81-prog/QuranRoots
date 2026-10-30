@@ -43,7 +43,7 @@ import com.quranroots.app.viewmodel.SearchMode
 import com.quranroots.app.viewmodel.SearchViewModel
 
 @Composable
-fun SearchScreen(onRootClick: (Long) -> Unit) {
+fun SearchScreen(onRootClick: (Long) -> Unit, onWaznClick: (Long) -> Unit = {}) {
     val app = LocalContext.current.applicationContext as App
     val vm: SearchViewModel = viewModel(factory = SearchViewModel.Factory(app))
 
@@ -52,6 +52,8 @@ fun SearchScreen(onRootClick: (Long) -> Unit) {
     val results by vm.results.collectAsStateWithLifecycle()
     val wordResults by vm.wordResults.collectAsStateWithLifecycle()
     val notFound by vm.notFound.collectAsStateWithLifecycle()
+    val waznResults by vm.waznResults.collectAsStateWithLifecycle()
+    val catalogLemma by vm.catalogLemma.collectAsStateWithLifecycle()
     val loading by vm.loading.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -70,8 +72,11 @@ fun SearchScreen(onRootClick: (Long) -> Unit) {
             onValueChange = vm::setQuery,
             placeholder = {
                 Text(
-                    if (mode == SearchMode.WORD) "اكتب كلمة (مثال: يعلمون، الصلاة)…"
-                    else stringResource(R.string.search_hint)
+                    when (mode) {
+                        SearchMode.WORD -> "اكتب كلمة (مثال: يعلمون، الصلاة)…"
+                        SearchMode.WAZN -> "اكتب وزنًا (مثال: فاعلون، مفعول، استفعل)…"
+                        else -> stringResource(R.string.search_hint)
+                    }
                 )
             },
             modifier = Modifier.fillMaxWidth(),
@@ -84,6 +89,24 @@ fun SearchScreen(onRootClick: (Long) -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+
+        if (mode == SearchMode.WAZN) {
+            if (query.isBlank()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("تصفّح:", style = MaterialTheme.typography.labelLarge)
+                    FilterChip(selected = catalogLemma, onClick = { vm.setCatalogLemma(true) },
+                        label = { Text("وزن الأصل") })
+                    FilterChip(selected = !catalogLemma, onClick = { vm.setCatalogLemma(false) },
+                        label = { Text("وزن الكلمة") })
+                }
+            } else {
+                Text(
+                    "يُبحث بالحروف دون التشكيل؛ ستظهر كل الأوزان المكتوبة بها (فعل ← فَعَلَ، فَعْل، فِعْل …).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         if (loading) Text(stringResource(R.string.loading))
@@ -105,6 +128,12 @@ fun SearchScreen(onRootClick: (Long) -> Unit) {
                 }
                 SearchMode.WORD ->
                     items(wordResults) { m -> WordMatchRow(m, onClick = { onRootClick(m.root.rootId) }) }
+                SearchMode.WAZN -> {
+                    if (query.isNotBlank() && waznResults.isEmpty() && !loading) item {
+                        Text("لا يوجد في القرآن وزن بهذه الحروف.", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    items(waznResults, key = { it.id }) { w -> WaznRow(w, onClick = { onWaznClick(w.id) }) }
+                }
             }
         }
     }
@@ -195,6 +224,37 @@ private fun WordMatchRow(m: WordMatch, onClick: () -> Unit) {
             }
             Text(
                 "${m.count} موضعًا",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = null,
+                modifier = Modifier.padding(start = 8.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun WaznRow(w: com.quranroots.app.data.db.entities.WaznEntry, onClick: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(w.text, style = MaterialTheme.typography.titleLarge,
+                    fontFamily = com.quranroots.app.ui.theme.QuranFont, lineHeight = 40.sp)
+                Text(
+                    if (w.isLemma) "وزن الأصل" else "وزن الكلمة",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Text(
+                "${w.words} موضعًا · ${w.roots} جذرًا",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

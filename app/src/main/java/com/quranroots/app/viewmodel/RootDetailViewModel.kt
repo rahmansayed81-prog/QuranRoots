@@ -35,6 +35,8 @@ data class AyahOccurrence(
 data class FormInfo(
     val lemma: String,
     val occurrences: Int,
+    /** خ-40: the lemma's ميزان and التصريف, when known. */
+    val morph: com.quranroots.app.data.db.entities.LemmaMorph? = null,
     /** Ayahs (within the current root) where this lemma appears. */
     val ayahKeys: Set<Pair<Int, Int>>
 )
@@ -127,11 +129,14 @@ class RootDetailViewModel(
             // occurrence count descending so the most frequent forms surface
             // first.
             val formGroups = words.groupBy { it.lemma ?: it.text }
+            val morphs = withContext(Dispatchers.IO) { repo.lemmaMorphForRoot(rootId) }
+                .associateBy { it.lemma }
             val forms = formGroups.entries
                 .map { (lemma, ws) ->
                     FormInfo(
                         lemma = lemma,
                         occurrences = ws.size,
+                        morph = morphs[lemma],
                         ayahKeys = ws.map { it.surahNo to it.ayahNo }.toSet()
                     )
                 }

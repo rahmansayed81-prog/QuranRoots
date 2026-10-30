@@ -7,6 +7,7 @@ import com.quranroots.app.data.db.entities.OppositeLink
 import com.quranroots.app.data.db.entities.Permutation
 import com.quranroots.app.data.db.entities.PermutationFamily
 import com.quranroots.app.data.db.normalizeRoot
+import com.quranroots.app.data.db.normalizeWazn
 import com.quranroots.app.data.db.entities.AyahEntity
 import com.quranroots.app.data.db.entities.LetterEntity
 import com.quranroots.app.data.db.entities.LetterRoot
@@ -75,6 +76,17 @@ class QuranRepository(private val source: QuranDataSource) {
     suspend fun hadithHitsForRoot(rootId: Long): HadithHits = source.hadithHitsForRoot(rootId)
 
     suspend fun hadiths(hids: List<Long>) = source.hadiths(hids)
+
+    // --- خ-40: التصريف والميزان ---
+    suspend fun lemmaMorphForRoot(rootId: Long) = source.lemmaMorphForRoot(rootId)
+
+    /** Search by ميزان: letters only (فاعلون، مفعول، استفعل); diacritics are ignored. */
+    suspend fun searchWazn(query: String) = source.searchWazn(normalizeWazn(query))
+
+    suspend fun waznCatalog(isLemma: Boolean) = source.waznCatalog(isLemma)
+    suspend fun waznById(id: Long) = source.waznById(id)
+    suspend fun waznSiblings(id: Long) = source.waznSiblings(id)
+    suspend fun waznWords(w: com.quranroots.app.data.db.entities.WaznEntry) = source.waznWords(w)
 
     /**
      * التقاليب (الاشتقاق الأكبر): every distinct ordering of the root's letters.

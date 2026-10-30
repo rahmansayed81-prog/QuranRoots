@@ -8,6 +8,9 @@ import com.quranroots.app.data.db.entities.AyahEntity
 import com.quranroots.app.data.db.entities.ExternalRootInfo
 import com.quranroots.app.data.db.entities.Hadith
 import com.quranroots.app.data.db.entities.HadithHits
+import com.quranroots.app.data.db.entities.LemmaMorph
+import com.quranroots.app.data.db.entities.WaznEntry
+import com.quranroots.app.data.db.entities.WaznWord
 import com.quranroots.app.data.db.entities.LetterEntity
 import com.quranroots.app.data.db.entities.LetterRoot
 import com.quranroots.app.data.db.entities.OppositeLink
@@ -219,6 +222,107 @@ class QuranDataSource(context: Context) {
                 hids.mapNotNull { byId[it] }   // keep the caller's order
             }
         }
+    }
+
+    // --- خ-40: التصريف والميزان -------------------------------------------
+
+    /** A word's التصريف reduced to its lemma's: a verb keeps only its باب
+     *  (فعل — ثلاثي مجرد), a noun drops number and gender. */
+    private fun lemmaLabel(label: String): String {
+        val parts = label.split(" — ")
+        return if (parts.first().startsWith("فعل")) "فعل — " + parts.last()
+        else parts.filterNot { it.startsWith("جمع") || it == "مثنى" || it == "مؤنث" }.joinToString(" — ")
+    }
+
+    /** Each lemma of a root with its most frequent lemma ميزان and label. */
+    fun lemmaMorphForRoot(rootId: Long): List<LemmaMorph> = safeQuery(emptyList()) { d ->
+        runCatching {
+            d.rawQuery(
+                "SELECT COALESCE(w.lemma, w.text), z.id, z.text, l.text, COUNT(*) AS n " +
+                    "FROM words w JOIN word_morph m USING (surah_no, ayah_no, word_no) " +
+                    "LEFT JOIN wazn z ON z.id = m.lemma_wazn_id " +
+                    "LEFT JOIN morph_label l ON l.id = m.label_id " +
+                    "WHERE w.root_id = ? GROUP BY 1, 2, 4 ORDER BY n DESC",
+                arrayOf(rootId.toString())
+            ).use { c ->
+                val seen = LinkedHashMap<String, LemmaMorph>()
+                while (c.moveToNext()) {
+                    val lemma = c.getString(0)
+                    if (lemma in seen) continue          // most frequent analysis wins
+                    val wz = if (c.isNull(1)) null else WaznEntry(c.getLong(1), c.getString(2), true)
+                    seen[lemma] = LemmaMorph(lemma, wz, if (c.isNull(3)) null else lemmaLabel(c.getString(3)))
+                }
+                seen.values.toList()
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    private val waznCounts =
+        "SELECT z.id, z.text, z.is_lemma, z.n_words, z.n_roots FROM wazn z WHERE %s ORDER BY z.n_words DESC"
+
+    private fun collectWazn(c: Cursor): List<WaznEntry> {
+        val out = mutableListOf<WaznEntry>()
+        while (c.moveToNext()) {
+            out += WaznEntry(c.getLong(0), c.getString(1), c.getInt(2) == 1, c.getInt(3), c.getInt(4))
+        }
+        return out
+    }
+
+    /** ميزان entries whose letters match `plain` (diacritics ignored), most used first. */
+    fun searchWazn(plain: String): List<WaznEntry> = safeQuery(emptyList()) { d ->
+        runCatching {
+            d.rawQuery(waznCounts.format("z.plain = ?"), arrayOf(plain)).use(::collectWazn)
+        }.getOrDefault(emptyList())
+    }
+
+    /** Every ميزان of one kind (lemma or word), most used first — for browsing. */
+    fun waznCatalog(isLemma: Boolean): List<WaznEntry> = safeQuery(emptyList()) { d ->
+        runCatching {
+            d.rawQuery(waznCounts.format("z.is_lemma = ?"), arrayOf(if (isLemma) "1" else "0"))
+                .use(::collectWazn)
+        }.getOrDefault(emptyList())
+    }
+
+    fun waznById(id: Long): WaznEntry? = safeQuery(null) { d ->
+        runCatching {
+            d.rawQuery(waznCounts.format("z.id = ?"), arrayOf(id.toString())).use(::collectWazn).firstOrNull()
+        }.getOrNull()
+    }
+
+    /** Other ميزان entries spelled with the same letters (فَعَلَ، فَعْل، فِعْل …). */
+    fun waznSiblings(id: Long): List<WaznEntry> = safeQuery(emptyList()) { d ->
+        runCatching {
+            val where = "z.plain = (SELECT plain FROM wazn WHERE id = ?) AND z.id != ?"
+            d.rawQuery(waznCounts.format(where), arrayOf(id.toString(), id.toString())).use(::collectWazn)
+        }.getOrDefault(emptyList())
+    }
+
+    /** Quran words on ميزان `id`, in mushaf order. */
+    fun waznWords(wazn: WaznEntry): List<WaznWord> = safeQuery(emptyList()) { d ->
+        runCatching {
+            val col = if (wazn.isLemma) "m.lemma_wazn_id" else "m.wazn_id"
+            d.rawQuery(
+                "SELECT w.surah_no, w.ayah_no, w.word_no, w.text, w.lemma, l.text, " +
+                    "r.root_id, r.letters, r.letters_spaced, r.occurrences, r.forms_count, r.meaning_ar " +
+                    "FROM word_morph m JOIN words w USING (surah_no, ayah_no, word_no) " +
+                    "JOIN roots r ON r.root_id = w.root_id " +
+                    "LEFT JOIN morph_label l ON l.id = m.label_id " +
+                    "WHERE $col = ? ORDER BY w.surah_no, w.ayah_no, w.word_no",
+                arrayOf(wazn.id.toString())
+            ).use { c ->
+                val out = mutableListOf<WaznWord>()
+                while (c.moveToNext()) {
+                    out += WaznWord(
+                        c.getInt(0), c.getInt(1), c.getInt(2), c.getString(3),
+                        if (c.isNull(4)) null else c.getString(4),
+                        RootEntity(c.getLong(6), c.getString(7), c.getString(8), c.getInt(9), c.getInt(10),
+                            if (c.isNull(11)) null else c.getString(11)),
+                        if (c.isNull(5)) null else c.getString(5)
+                    )
+                }
+                out
+            }
+        }.getOrDefault(emptyList())
     }
 
     fun rootGloss(rootId: Long): String? = safeQuery(null) { d ->
@@ -503,6 +607,6 @@ class QuranDataSource(context: Context) {
     companion object {
         private const val DB_NAME = "quran-roots.db"
         /** Bump when the asset DB schema changes so clients re-copy from assets. */
-        private const val DB_VERSION = 15
+        private const val DB_VERSION = 16
     }
 }

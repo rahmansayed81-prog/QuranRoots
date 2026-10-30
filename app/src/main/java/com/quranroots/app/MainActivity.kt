@@ -81,6 +81,8 @@ private object Routes {
     const val Muqattaat = "muqattaat"
     const val Sync = "sync"
     const val Sources = "sources"
+    const val Wazn = "wazn/{waznId}"
+    fun wazn(id: Long) = "wazn/$id"
     const val Study = "study/{studyId}"
     fun study(id: Long) = "study/$id"
 }
@@ -150,7 +152,10 @@ fun AppRoot() {
                 com.quranroots.app.ui.screens.about.SourcesScreen(onBack = { nav.popBackStack() })
             }
             composable(Routes.Search) {
-                SearchScreen(onRootClick = { id -> nav.navigate(Routes.rootDetail(id)) })
+                SearchScreen(
+                    onRootClick = { id -> nav.navigate(Routes.rootDetail(id)) },
+                    onWaznClick = { id -> nav.navigate(Routes.wazn(id)) }
+                )
             }
             composable(Routes.Letters) {
                 LettersScreen(
@@ -181,7 +186,17 @@ fun AppRoot() {
                 RootDetailScreen(
                     rootId = rootId,
                     onBack = { nav.popBackStack() },
-                    onRelatedRoot = { id -> nav.navigate(Routes.rootDetail(id)) }
+                    onRelatedRoot = { id -> nav.navigate(Routes.rootDetail(id)) },
+                    onWaznClick = { id -> nav.navigate(Routes.wazn(id)) }
+                )
+            }
+            composable(Routes.Wazn) { entry ->
+                val id = entry.arguments?.getString("waznId")?.toLongOrNull() ?: return@composable
+                com.quranroots.app.ui.screens.wazn.WaznScreen(
+                    waznId = id,
+                    onBack = { nav.popBackStack() },
+                    onRootClick = { rid -> nav.navigate(Routes.rootDetail(rid)) },
+                    onWaznClick = { wid -> nav.navigate(Routes.wazn(wid)) }
                 )
             }
             composable(Routes.LetterDetail) { entry ->

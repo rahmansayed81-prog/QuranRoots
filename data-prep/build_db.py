@@ -1068,6 +1068,12 @@ def main() -> int:
     from build_hadith import build_hadith
     build_hadith(cur, {rid: l for l, rid in root_id_by_letters.items()})
 
+    # ---- التصريف والميزان الصرفي (خ-40 م1) ----
+    from build_wazn import build_word_morph, export_review
+    morph_stats = build_word_morph(cur, word_segments)
+    print(f"      word morphology: {dict(morph_stats)}")
+    export_review(cur, ROOT / "review" / "wazn_review_v1.tsv")
+
     conn.commit()
     print(f"[5/5] Wrote {DB_PATH} ({DB_PATH.stat().st_size/1024/1024:.1f} MB)")
     conn.close()
