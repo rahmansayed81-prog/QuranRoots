@@ -460,6 +460,9 @@ def tasreef(feats, stem_bw: str, root_len: int) -> str:
 # --------------------------------------------------------------------------
 
 ALLAH_LEMMAS = {"{ll~ah", "{ll~`h", "All~ah"}
+# خ-49: قلب مكاني (طاغوت ← طَغَيُوت) — the radicals are out of order, so
+# alignment yields a false ميزان; left to the committee with the disputed words.
+QALB_LEMMAS = {"T~a`guwt"}
 
 SUBJ_SUFFIX_PERSONS = {
     "PERF": {"1S", "2MS", "2FS", "3FS", "1P", "2MP", "2FP", "3MP", "3FP", "2D", "3MD", "3FD"},
@@ -521,6 +524,9 @@ def analyze_word(segs):
     lem = f.get("LEM")
     if lem in ALLAH_LEMMAS:       # لفظ الجلالة: not weighed mechanically — for the committee
         return {"tasreef": "علم — لفظ الجلالة", "wazn": None, "lemma_wazn": None, "status": "review"}
+    if lem in QALB_LEMMAS:
+        return {"tasreef": tasreef(f, stem_bw, len(root)), "wazn": None, "lemma_wazn": None,
+                "status": "review"}
     g, num = number_gender(f)
     plural = ("MP" if g == "M" else "FP") if num == "P" and pos_tag != "V" else None
     wazn, status = weigh(stem_bw, root, vf=vf, pos_tag=pos_tag, aspect=aspect, det_sun=det,

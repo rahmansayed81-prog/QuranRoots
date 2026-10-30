@@ -239,12 +239,19 @@ def token_span(a, token: str):
     return word, suffix
 
 
+# خ-49: lemmas with قلب مكاني (see build_wazn.QALB_LEMMAS) — for the committee.
+QALB_LEX = {"طاغوت"}
+
+
 def weigh_camel(a, root_letters: str, token: str | None = None):
     """(label, wazn, lemma_wazn, status) for one CAMeL analysis. When the
     analysis contradicts the hadith's own vowels (score < 0 — the light CAMeL
     DB lacks e.g. حَدَّثَ), the hadith's spelling is weighed instead and the
     verb's باب is read off that ميزان."""
     from build_wazn import weigh, verb_bab
+    if re.sub("[ً-ٰٕ]", "", a.get("lex") or "") in QALB_LEX:
+        label = camel_label(a, 1, len(root_letters))[0]
+        return label, None, None, "review"
     if token and (a.get("score") or 0) < 0:
         span = token_span(a, token)
         if span and span[0]:
