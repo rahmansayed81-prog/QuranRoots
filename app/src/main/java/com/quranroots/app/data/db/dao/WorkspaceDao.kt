@@ -7,6 +7,7 @@ import androidx.room.Query
 import com.quranroots.app.data.db.entities.AyahNoteEntity
 import com.quranroots.app.data.db.entities.AyahTagEntity
 import com.quranroots.app.data.db.entities.RootNoteEntity
+import com.quranroots.app.data.db.entities.RootReportEntity
 import com.quranroots.app.data.db.entities.TagEntity
 import com.quranroots.app.data.db.entities.StudyEntity
 import com.quranroots.app.data.db.entities.StudyRootEntity
@@ -160,6 +161,17 @@ interface WorkspaceDao {
     @Query("SELECT * FROM ayah_tags")
     fun ayahTags(): Flow<List<AyahTagEntity>>
 
+    // --- خ-65 root reports ---------------------------------------------------
+
+    @Insert
+    suspend fun insertReport(r: RootReportEntity): Long
+
+    @Query("DELETE FROM root_reports WHERE id = :id")
+    suspend fun deleteReport(id: Long)
+
+    @Query("SELECT * FROM root_reports ORDER BY created_at DESC")
+    fun reports(): Flow<List<RootReportEntity>>
+
     // --- Snapshot (export / Drive backup) & restore -------------------------
 
     @Query("SELECT * FROM workspace_items") suspend fun snapItems(): List<WorkspaceItemEntity>
@@ -170,6 +182,7 @@ interface WorkspaceDao {
     @Query("SELECT * FROM root_notes") suspend fun snapRootNotes(): List<RootNoteEntity>
     @Query("SELECT * FROM tags") suspend fun snapTags(): List<TagEntity>
     @Query("SELECT * FROM ayah_tags") suspend fun snapAyahTags(): List<AyahTagEntity>
+    @Query("SELECT * FROM root_reports") suspend fun snapReports(): List<RootReportEntity>
 
     @Query("DELETE FROM workspace_items") suspend fun wipeItems()
     @Query("DELETE FROM workspace_hidden_ayahs") suspend fun wipeHidden()
@@ -181,6 +194,7 @@ interface WorkspaceDao {
     @Query("DELETE FROM root_notes") suspend fun wipeRootNotes()
     @Query("DELETE FROM tags") suspend fun wipeTags()
     @Query("DELETE FROM ayah_tags") suspend fun wipeAyahTags()
+    @Query("DELETE FROM root_reports") suspend fun wipeReports()
 
     @Insert suspend fun putItems(rows: List<WorkspaceItemEntity>)
     @Insert suspend fun putHidden(rows: List<WorkspaceHiddenAyahEntity>)
@@ -190,4 +204,5 @@ interface WorkspaceDao {
     @Insert suspend fun putRootNotes(rows: List<RootNoteEntity>)
     @Insert suspend fun putTags(rows: List<TagEntity>)
     @Insert suspend fun putAyahTags(rows: List<AyahTagEntity>)
+    @Insert suspend fun putReports(rows: List<RootReportEntity>)
 }

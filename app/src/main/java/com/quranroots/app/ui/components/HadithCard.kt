@@ -87,13 +87,15 @@ fun HadithCard(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
             ) { Text("المصدر: الدرر السنية", style = MaterialTheme.typography.labelMedium) }
         }
-        AyahView(
-            words = words,
-            highlightedWordNos = highlighted,
-            relatedHighlightedWordNos = relatedHighlighted,
-            wordColors = wordColors,
-            compact = true
-        )
+        androidx.compose.runtime.CompositionLocalProvider(LocalReportHid provides h.hid) {
+            AyahView(
+                words = words,
+                highlightedWordNos = highlighted,
+                relatedHighlightedWordNos = relatedHighlighted,
+                wordColors = wordColors,
+                compact = true
+            )
+        }
         if (divider) HorizontalDivider(modifier = Modifier.padding(top = 6.dp))
     }
 }

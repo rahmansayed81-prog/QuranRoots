@@ -1,7 +1,8 @@
 package com.quranroots.app.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -24,6 +25,7 @@ import com.quranroots.app.ui.theme.QuranFont
  * Render an ayah word-by-word. Words whose `wordNo` is in
  * `highlightedWordNos` get a yellow highlight; tapping a highlighted word
  * invokes `onWordClick` (used to hide all ayahs of that lemma).
+ * Long-pressing ANY word opens «تصحيح الجذر» (خ-65).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -40,6 +42,9 @@ fun AyahView(
     val dark = isSystemInDarkTheme()
     val highlightBg: Color = if (dark) Highlight.WordBgDark else Highlight.WordBg
     val relatedBg: Color = if (dark) Highlight.RelatedBgDark else Highlight.RelatedBg
+    val report = LocalWordReport.current
+    val reportHid = LocalReportHid.current
+    val contextRootId = LocalContextRootId.current
 
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -57,7 +62,16 @@ fun AyahView(
             val mod = Modifier
                 .let { m -> if (bg != null) m.clip(RoundedCornerShape(6.dp)).background(bg) else m }
                 .let { m ->
-                    if (isHi && onWordClick != null) m.clickable { onWordClick(w) } else m
+                    val click = if (isHi && onWordClick != null) ({ onWordClick(w) }) else null
+                    if (click == null && report == null) m
+                    // Tap gestures (no ripple) so plain words stay visually inert;
+                    // only highlighted words react to a tap.
+                    else m.pointerInput(w, isHi, report, onWordClick, reportHid, contextRootId) {
+                        detectTapGestures(
+                            onTap = { click?.invoke() },
+                            onLongPress = { report?.request(w, reportHid, if (isHi) contextRootId else null) }
+                        )
+                    }
                 }
             Text(
                 text = w.text,

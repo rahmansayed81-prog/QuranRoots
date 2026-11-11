@@ -10,6 +10,7 @@ import com.quranroots.app.data.db.dao.WorkspaceDao
 import com.quranroots.app.data.db.entities.AyahNoteEntity
 import com.quranroots.app.data.db.entities.AyahTagEntity
 import com.quranroots.app.data.db.entities.RootNoteEntity
+import com.quranroots.app.data.db.entities.RootReportEntity
 import com.quranroots.app.data.db.entities.TagEntity
 import com.quranroots.app.data.db.entities.StudyEntity
 import com.quranroots.app.data.db.entities.StudyRootEntity
@@ -24,7 +25,7 @@ import com.quranroots.app.data.db.entities.WorkspaceItemEntity
  * assets without going through Room's schema-hash verification.
  */
 @Database(
-    version = 4,
+    version = 5,
     exportSchema = false,
     entities = [
         WorkspaceItemEntity::class,
@@ -36,7 +37,8 @@ import com.quranroots.app.data.db.entities.WorkspaceItemEntity
         AyahNoteEntity::class,
         RootNoteEntity::class,
         TagEntity::class,
-        AyahTagEntity::class
+        AyahTagEntity::class,
+        RootReportEntity::class
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -93,10 +95,24 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v4 → v5: root error reports (خ-65). Additive only. */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `root_reports` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`kind` TEXT NOT NULL, `surah_no` INTEGER, `ayah_no` INTEGER, " +
+                        "`hid` INTEGER, `word_no` INTEGER NOT NULL, `word_text` TEXT NOT NULL, " +
+                        "`current_root` TEXT, `suggested_root` TEXT, `note` TEXT, " +
+                        "`created_at` INTEGER NOT NULL)"
+                )
+            }
+        }
+
         /** Every table that holds the user's work — watched to trigger sync. */
         val USER_TABLES = arrayOf(
             "workspace_items", "workspace_hidden_ayahs", "studies", "study_roots",
-            "ayah_notes", "root_notes", "tags", "ayah_tags"
+            "ayah_notes", "root_notes", "tags", "ayah_tags", "root_reports"
         )
 
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
@@ -107,7 +123,7 @@ abstract class AppDatabase : RoomDatabase() {
             )
                 // Destructive fallback stays only for downgrades / unknown old
                 // versions; every known upgrade path must have a migration.
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .fallbackToDestructiveMigration()
                 .build().also { INSTANCE = it }
         }

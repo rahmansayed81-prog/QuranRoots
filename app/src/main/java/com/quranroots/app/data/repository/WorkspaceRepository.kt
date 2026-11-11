@@ -6,6 +6,7 @@ import androidx.room.withTransaction
 import com.quranroots.app.data.db.entities.AyahNoteEntity
 import com.quranroots.app.data.db.entities.AyahTagEntity
 import com.quranroots.app.data.db.entities.RootNoteEntity
+import com.quranroots.app.data.db.entities.RootReportEntity
 import com.quranroots.app.data.db.entities.TagEntity
 import com.quranroots.app.data.db.entities.RootEntity
 import com.quranroots.app.data.db.entities.StudyEntity
@@ -166,24 +167,34 @@ class WorkspaceRepository(
         if (on) dao.addAyahTag(AyahTagEntity(tagId, s, a)) else dao.removeAyahTag(tagId, s, a)
     }
 
+    // --- خ-65 root reports ---------------------------------------------------
+
+    val reports = dao.reports()
+
+    suspend fun addReport(r: RootReportEntity): Long = dao.insertReport(r)
+
+    suspend fun deleteReport(id: Long) = dao.deleteReport(id)
+
     // --- Snapshot / restore (خ-18) -----------------------------------------
 
     suspend fun snapshot(): WorkspaceSnapshot = WorkspaceSnapshot(
         items = dao.snapItems(), hiddenAyahs = dao.snapHidden(),
         studies = dao.snapStudies(), studyRoots = dao.snapStudyRoots(),
         ayahNotes = dao.snapAyahNotes(), rootNotes = dao.snapRootNotes(),
-        tags = dao.snapTags(), ayahTags = dao.snapAyahTags()
+        tags = dao.snapTags(), ayahTags = dao.snapAyahTags(),
+        reports = dao.snapReports()
     )
 
     /** Replaces ALL local workspace data with `snap`, atomically. */
     suspend fun restore(snap: WorkspaceSnapshot) = db.withTransaction {
-        dao.wipeAyahTags(); dao.wipeTags(); dao.wipeRootNotes(); dao.wipeAyahNotes()
+        dao.wipeReports(); dao.wipeAyahTags(); dao.wipeTags(); dao.wipeRootNotes(); dao.wipeAyahNotes()
         dao.wipeStudyRoots(); dao.wipeStudies(); dao.wipeHidden()
         dao.wipeHiddenWords(); dao.wipeHiddenLemmas(); dao.wipeItems()
         dao.putItems(snap.items); dao.putHidden(snap.hiddenAyahs)
         dao.putStudies(snap.studies); dao.putStudyRoots(snap.studyRoots)
         dao.putAyahNotes(snap.ayahNotes); dao.putRootNotes(snap.rootNotes)
         dao.putTags(snap.tags); dao.putAyahTags(snap.ayahTags)
+        dao.putReports(snap.reports)
     }
 }
 
@@ -204,5 +215,6 @@ data class WorkspaceSnapshot(
     val ayahNotes: List<AyahNoteEntity>,
     val rootNotes: List<RootNoteEntity>,
     val tags: List<TagEntity>,
-    val ayahTags: List<AyahTagEntity>
+    val ayahTags: List<AyahTagEntity>,
+    val reports: List<RootReportEntity> = emptyList()
 )

@@ -121,7 +121,7 @@ class DriveSync(private val app: App) {
             }
             // Studies deleted on the phone → trash their files on Drive.
             val liveKeys = files.map { it.key }.toSet()
-            for (remote in client.listKind("study")) {
+            for (remote in client.listKind("study") + client.listKind("reports")) {
                 if (remote.key !in liveKeys) {
                     client.trash(remote.id)
                     hashes.remove(remote.key)

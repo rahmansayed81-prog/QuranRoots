@@ -1079,7 +1079,10 @@ def main() -> int:
     conn.commit()
     print(f"[5/5] Wrote {DB_PATH} ({DB_PATH.stat().st_size/1024/1024:.1f} MB)")
     conn.close()
-    return 0
+
+    # خ-64: fail the build if a known invariant breaks or DB_VERSION is stale.
+    from check_db import main as check_db
+    return check_db(["check_db", str(DB_PATH)])
 
 
 _DIACRITICS = re.compile("[ً-ْٰٱۖ-ۭ]")

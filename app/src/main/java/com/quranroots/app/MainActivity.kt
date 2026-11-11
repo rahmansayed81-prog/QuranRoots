@@ -98,16 +98,21 @@ fun AppRoot() {
     val snackbar = remember { SnackbarHostState() }
     val addToStudy = remember { AddToStudyController(app.workspaceRepo, scope, snackbar) }
     val annotate = remember { AnnotationsController(app.workspaceRepo, scope) }
+    val wordReport = remember {
+        com.quranroots.app.ui.components.WordReportController(app.quranRepo, app.workspaceRepo, scope, snackbar)
+    }
     val annotations by app.workspaceRepo.annotations
         .collectAsStateWithLifecycle(initialValue = Annotations())
 
     CompositionLocalProvider(
         LocalAddToStudy provides addToStudy,
+        com.quranroots.app.ui.components.LocalWordReport provides wordReport,
         LocalAnnotationsController provides annotate,
         LocalAnnotations provides annotations
     ) {
     AddToStudyDialog(addToStudy)
     AnnotateSheet(annotate)
+    com.quranroots.app.ui.components.WordReportDialog(wordReport)
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {

@@ -5,6 +5,7 @@ import com.quranroots.app.data.db.entities.AyahNoteEntity
 import com.quranroots.app.data.db.entities.AyahTagEntity
 import com.quranroots.app.data.db.entities.RootEntity
 import com.quranroots.app.data.db.entities.RootNoteEntity
+import com.quranroots.app.data.db.entities.RootReportEntity
 import com.quranroots.app.data.db.entities.StudyEntity
 import com.quranroots.app.data.db.entities.StudyRootEntity
 import com.quranroots.app.data.db.entities.TagEntity
@@ -75,6 +76,13 @@ class StudyExporter(private val quran: QuranDataSource) {
             key = "index", kind = "index", name = "_فهرس.md", mime = "text/markdown",
             content = indexMarkdown(snap, roots, inStudy, rootNotes)
         )
+        // خ-65: root error reports, readable on the computer.
+        if (snap.reports.isNotEmpty()) {
+            files += ExportFile(
+                key = "reports", kind = "reports", name = "_بلاغات-الجذور.md", mime = "text/markdown",
+                content = reportsMarkdown(snap.reports, ::surahName)
+            )
+        }
         files += ExportFile(
             key = "backup", kind = "backup", name = "quranroots-backup.json",
             mime = "application/json", content = backupJson(snap, roots).toString(1)
@@ -253,6 +261,14 @@ class StudyExporter(private val quran: QuranDataSource) {
             .put("tags", JSONArray(snap.tags.map {
                 JSONObject().put("id", it.id).put("name", it.name).put("color", it.color)
             }))
+            .put("root_reports", JSONArray(snap.reports.map {
+                JSONObject().put("kind", it.kind)
+                    .put("s", it.surahNo ?: JSONObject.NULL).put("a", it.ayahNo ?: JSONObject.NULL)
+                    .put("hid", it.hid ?: JSONObject.NULL).put("word_no", it.wordNo)
+                    .put("word", it.wordText).put("current_root", it.currentRoot ?: JSONObject.NULL)
+                    .put("suggested_root", it.suggestedRoot ?: JSONObject.NULL)
+                    .put("note", it.note ?: JSONObject.NULL).put("created_at", it.createdAt)
+            }))
             .put("ayah_tags", JSONArray(snap.ayahTags.map {
                 JSONObject().put("tag_id", it.tagId).put("s", it.surahNo).put("a", it.ayahNo)
             }))
@@ -305,8 +321,35 @@ class StudyExporter(private val quran: QuranDataSource) {
             tags = arr("tags").mapObj { j -> TagEntity(j.getLong("id"), j.getString("name"), j.getInt("color")) },
             ayahTags = arr("ayah_tags").mapObj { j ->
                 AyahTagEntity(j.getLong("tag_id"), j.getInt("s"), j.getInt("a"))
+            },
+            reports = arr("root_reports").mapObj { j ->
+                fun optStr(k: String) = if (j.isNull(k)) null else j.optString(k)
+                fun optInt(k: String) = if (j.isNull(k)) null else j.optInt(k)
+                RootReportEntity(
+                    kind = j.getString("kind"), surahNo = optInt("s"), ayahNo = optInt("a"),
+                    hid = if (j.isNull("hid")) null else j.optLong("hid"),
+                    wordNo = j.getInt("word_no"), wordText = j.getString("word"),
+                    currentRoot = optStr("current_root"), suggestedRoot = optStr("suggested_root"),
+                    note = optStr("note"), createdAt = j.getLong("created_at")
+                )
             }
         )
+    }
+
+    /** خ-65: one line per report, newest first. */
+    private fun reportsMarkdown(reports: List<RootReportEntity>, surahName: (Int) -> String): String {
+        val sb = StringBuilder()
+        sb.append("# بلاغات الجذور (${reports.size})\n\n")
+        sb.append("_كلمات يرى المستخدم أن جذرها في التطبيق غير صحيح. تُراجَع وتتحول إلى قواعد تصحيح في البناء التالي._\n\n")
+        sb.append("| الموضع | الكلمة | الجذر الحالي | الجذر المقترح | ملاحظة |\n|---|---|---|---|---|\n")
+        fun cell(s: String?) = (s ?: "").replace("|", "/").replace("\n", " ")
+        for (r in reports.sortedByDescending { it.createdAt }) {
+            val where = if (r.kind == "ayah") "${surahName(r.surahNo ?: 0)} ${r.ayahNo}، كلمة ${r.wordNo}"
+                        else "حديث ${r.hid}، كلمة ${r.wordNo}"
+            sb.append("| $where | ${cell(r.wordText)} | ${cell(r.currentRoot) .ifEmpty { "—" }} | ")
+            sb.append("${cell(r.suggestedRoot).ifEmpty { "بلا جذر / غير متأكد" }} | ${cell(r.note)} |\n")
+        }
+        return sb.toString()
     }
 
     private companion object { const val HADITH_CAP = 60 }

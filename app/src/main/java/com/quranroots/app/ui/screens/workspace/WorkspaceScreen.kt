@@ -64,6 +64,7 @@ fun WorkspaceScreen(
     val vm: WorkspaceViewModel = viewModel(factory = WorkspaceViewModel.Factory(app))
     val items by vm.items.collectAsStateWithLifecycle()
     val studies by vm.studies.collectAsStateWithLifecycle()
+    val reports by app.workspaceRepo.reports.collectAsStateWithLifecycle(initialValue = emptyList())
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var creating by remember { mutableStateOf(false) }
@@ -179,6 +180,45 @@ fun WorkspaceScreen(
                 }
                 IconButton(onClick = { vm.remove(root.rootId) }) {
                     Icon(Icons.Outlined.Delete, contentDescription = "حذف")
+                }
+            }
+        }
+        // خ-65: root error reports, until they are turned into corrections.
+        if (reports.isNotEmpty()) {
+            item {
+                Text(
+                    "بلاغات الجذور (${reports.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                Text(
+                    "تُزامَن مع درايف في «_بلاغات-الجذور.md». اضغط مطولًا على أي كلمة لإضافة بلاغ.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            items(reports, key = { "rep${it.id}" }) { r ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
+                        Text(r.wordText, fontFamily = com.quranroots.app.ui.theme.QuranFont,
+                            style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            (r.currentRoot ?: "بلا جذر") + " ← " + (r.suggestedRoot ?: "؟") +
+                                (if (r.kind == "ayah") " · ${r.surahNo}:${r.ayahNo}" else " · حديث") +
+                                (r.note?.let { " · $it" } ?: ""),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    IconButton(onClick = { scope.launch { app.workspaceRepo.deleteReport(r.id) } }) {
+                        Icon(Icons.Outlined.Delete, contentDescription = "حذف البلاغ")
+                    }
                 }
             }
         }

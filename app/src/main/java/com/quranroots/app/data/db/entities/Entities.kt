@@ -259,6 +259,28 @@ data class AyahTagEntity(
     @ColumnInfo(name = "ayah_no") val ayahNo: Int
 )
 
+/**
+ * خ-65: the user flags a word whose root looks wrong. Kept until handled;
+ * synced to Drive so corrections can feed the next DB build.
+ * kind = "ayah" (surah/ayah set) or "hadith" (hid set).
+ */
+@Entity(tableName = "root_reports")
+data class RootReportEntity(
+    @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "id") val id: Long = 0,
+    @ColumnInfo(name = "kind") val kind: String,
+    @ColumnInfo(name = "surah_no") val surahNo: Int? = null,
+    @ColumnInfo(name = "ayah_no") val ayahNo: Int? = null,
+    @ColumnInfo(name = "hid") val hid: Long? = null,
+    @ColumnInfo(name = "word_no") val wordNo: Int,
+    @ColumnInfo(name = "word_text") val wordText: String,
+    /** Root the app shows now (letters), if any. */
+    @ColumnInfo(name = "current_root") val currentRoot: String? = null,
+    /** Root the user thinks is right (letters); empty = "no root / not sure". */
+    @ColumnInfo(name = "suggested_root") val suggestedRoot: String? = null,
+    @ColumnInfo(name = "note") val note: String? = null,
+    @ColumnInfo(name = "created_at") val createdAt: Long
+)
+
 /** Study membership. Many-to-many: a root may belong to several studies. */
 @Entity(tableName = "study_roots", primaryKeys = ["study_id", "root_id"])
 data class StudyRootEntity(
