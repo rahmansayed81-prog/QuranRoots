@@ -76,13 +76,8 @@ class StudyExporter(private val quran: QuranDataSource) {
             key = "index", kind = "index", name = "_فهرس.md", mime = "text/markdown",
             content = indexMarkdown(snap, roots, inStudy, rootNotes)
         )
-        // خ-65: root error reports, readable on the computer.
-        if (snap.reports.isNotEmpty()) {
-            files += ExportFile(
-                key = "reports", kind = "reports", name = "_بلاغات-الجذور.md", mime = "text/markdown",
-                content = reportsMarkdown(snap.reports, ::surahName)
-            )
-        }
+        // خ-70: root reports go to the developer by e-mail, not to Drive;
+        // they stay only in the backup JSON so a restore keeps them.
         files += ExportFile(
             key = "backup", kind = "backup", name = "quranroots-backup.json",
             mime = "application/json", content = backupJson(snap, roots).toString(1)
@@ -334,22 +329,6 @@ class StudyExporter(private val quran: QuranDataSource) {
                 )
             }
         )
-    }
-
-    /** خ-65: one line per report, newest first. */
-    private fun reportsMarkdown(reports: List<RootReportEntity>, surahName: (Int) -> String): String {
-        val sb = StringBuilder()
-        sb.append("# بلاغات الجذور (${reports.size})\n\n")
-        sb.append("_كلمات يرى المستخدم أن جذرها في التطبيق غير صحيح. تُراجَع وتتحول إلى قواعد تصحيح في البناء التالي._\n\n")
-        sb.append("| الموضع | الكلمة | الجذر الحالي | الجذر المقترح | ملاحظة |\n|---|---|---|---|---|\n")
-        fun cell(s: String?) = (s ?: "").replace("|", "/").replace("\n", " ")
-        for (r in reports.sortedByDescending { it.createdAt }) {
-            val where = if (r.kind == "ayah") "${surahName(r.surahNo ?: 0)} ${r.ayahNo}، كلمة ${r.wordNo}"
-                        else "حديث ${r.hid}، كلمة ${r.wordNo}"
-            sb.append("| $where | ${cell(r.wordText)} | ${cell(r.currentRoot) .ifEmpty { "—" }} | ")
-            sb.append("${cell(r.suggestedRoot).ifEmpty { "بلا جذر / غير متأكد" }} | ${cell(r.note)} |\n")
-        }
-        return sb.toString()
     }
 
     private companion object { const val HADITH_CAP = 60 }

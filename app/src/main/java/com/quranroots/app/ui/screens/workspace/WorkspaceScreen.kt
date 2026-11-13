@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CloudDone
 import androidx.compose.material.icons.outlined.CloudOff
@@ -192,7 +193,7 @@ fun WorkspaceScreen(
                     modifier = Modifier.padding(top = 8.dp)
                 )
                 Text(
-                    "تُزامَن مع درايف في «_بلاغات-الجذور.md». اضغط مطولًا على أي كلمة لإضافة بلاغ.",
+                    "تُرسَل بالبريد إلى المطوّر عند كتابتها. أعد الإرسال إن لم تكن أرسلتها، أو احذفها بعد الإرسال. اضغط مطولًا على أي كلمة لإضافة بلاغ.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -215,6 +216,10 @@ fun WorkspaceScreen(
                                 (r.note?.let { " · $it" } ?: ""),
                             style = MaterialTheme.typography.bodySmall
                         )
+                    }
+                    val wordReport = com.quranroots.app.ui.components.LocalWordReport.current
+                    IconButton(onClick = { wordReport?.send(ctx, r) }) {
+                        Icon(Icons.Outlined.Email, contentDescription = "إعادة الإرسال بالبريد")
                     }
                     IconButton(onClick = { scope.launch { app.workspaceRepo.deleteReport(r.id) } }) {
                         Icon(Icons.Outlined.Delete, contentDescription = "حذف البلاغ")
