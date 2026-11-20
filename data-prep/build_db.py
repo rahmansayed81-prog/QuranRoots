@@ -356,7 +356,31 @@ def parse_corpus(path: Path):
                 else:
                     features.setdefault(kv, "")
             features["_TAG"] = tag
+            if "LEM" in features:
+                features["LEM"] = fix_lemma_bw(features["LEM"], features.get("ROOT"))
             yield surah, ayah, word, seg, form_bw, features
+
+
+# خ-93: QAC 0.4 lemma defects.
+# (1) Truncated lemmas: the stem was cut before a doubled final root letter
+#     (مَكَّنَّا → mak~a, عَنِتُّمْ → Eani, أَلَنَّا → >ala).
+LEMMA_FIXES = {
+    ("mak~a", "mkn"): "mak~ana",
+    ("Eani", "Ent"): "Eanita",
+    (">ala", "lyn"): ">alaAna",
+    ("lin", "lyn"): "laAna",          # لِنتَ / تَلِينُ → لَانَ
+    ("A^m~iyn", "Amm"): "|m~iyn",     # ءَآمِّينَ → آمِّين (madda lost)
+}
+
+
+def fix_lemma_bw(lem: str, root: str | None) -> str:
+    lem = LEMMA_FIXES.get((lem, root), lem)
+    # (2) Assimilation (إدغام from ال or the previous word) leaked into the lemma
+    #     as a shadda on the first letter (m~ubiyn → مُّبِين). No lemma starts
+    #     with a shadda, so drop it.
+    if len(lem) > 1 and lem[1] == "~" and lem[0] not in "{":
+        lem = lem[0] + lem[2:]
+    return lem
 
 
 # ---------------------------------------------------------------------------
